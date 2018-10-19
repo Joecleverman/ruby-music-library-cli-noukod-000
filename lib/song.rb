@@ -1,65 +1,63 @@
+require 'pry'
+
 class Song
-  extend Concerns::Findable
+
   attr_accessor :name
   attr_reader :artist, :genre
+
+  extend Concerns::Findable
+
   @@all = []
 
-  def initialize(name, artist = nil, genre = nil)
+  def initialize(name, artist=nil, genre=nil)
     @name = name
     self.artist = artist if artist
     self.genre = genre if genre
   end
+
+  # Class Methods
 
   def self.all
     @@all
   end
 
   def self.destroy_all
-    @@all.clear
+    self.all.clear
   end
 
   def save
-    @@all << self
-    self
+    self.class.all << self
   end
 
-  def self.create(name, artist = nil, genre = nil)
-    Song.new(name, artist, genre).save
-  end
-
-  def artist=(the_artist)
-    @artist = the_artist
-    the_artist.add_song(self)
-  end
-
-  def genre=(the_genre)
-    @genre = the_genre
-    the_genre.songs << self unless the_genre.songs.include? self
-  end
-
-  def to_s
-    "#{artist.name} - #{name} - #{genre.name}"
+  def self.create(name)
+    song = self.new(name)
+    song.save
+    song
   end
 
   def self.new_from_filename(filename)
-    artist, song, genre = song_nomenclature(filename)
-    Song.new(song,
-             Artist.find_or_create_by_name(artist),
-             Genre.find_or_create_by_name(genre))
+    data = filename.split(' - ')
+    genre = data[2].gsub(".mp3", "")
+    song = Song.new(data[1])
+    song.artist = Artist.find_or_create_by_name(data[0])
+    song.genre = Genre.find_or_create_by_name(genre)
+    song
   end
 
   def self.create_from_filename(filename)
-    artist, song, genre = song_nomenclature(filename)
-    Song.create(song,
-                Artist.find_or_create_by_name(artist),
-                Genre.find_or_create_by_name(genre))
+    song = self.new_from_filename(filename)
+    song.save
   end
 
-  def self.song_nomenclature(filename)
-    filename_parts = filename.gsub(/.mp3/, '').split(' - ')
-    artist_, song_, genre_ = filename_parts
-    [artist_, song_, genre_]
+  # Instance Methods
+
+  def artist=(artist)
+    @artist = artist
+    artist.add_song(self)
   end
 
-  private_class_method :song_nomenclature
+  def genre=(genre)
+    @genre = genre
+    genre.songs << self unless genre.songs.include?(self)
+  end
 end
